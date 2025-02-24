@@ -33,7 +33,8 @@ func checkIpAddressLimit(ip string) *rate.Limiter {
 
 	if !exist {
 
-		v = rate.NewLimiter(rate.Limit(3), 2)
+		// v = rate.NewLimiter(0, 0)  //? for testing.
+		v = rate.NewLimiter(rate.Limit(3), 2) //? 3 requests for user and 2 burst.
 	}
 	return v
 }
@@ -44,6 +45,7 @@ func middleware(next http.HandlerFunc) http.HandlerFunc {
 
 		ip := r.RemoteAddr
 		limit := checkIpAddressLimit(ip)
+		fmt.Println("ip: ", ip, "limit: ", limit.Allow())
 
 		if !limit.Allow() {
 			http.Error(w, "too many requests", http.StatusTooManyRequests)
@@ -61,10 +63,10 @@ func main() {
 	router := http.NewServeMux()
 	port := ":5000"
 
-	router.HandleFunc("GET /add", Add)
-	router.HandleFunc("GET /sub", Sub)
-	router.HandleFunc("GET /multi", Multi)
-	router.HandleFunc("GET /div", Div)
+	router.HandleFunc("GET /add", middleware(Add))
+	router.HandleFunc("GET /sub", middleware(Sub))
+	router.HandleFunc("GET /multi", middleware(Multi))
+	router.HandleFunc("GET /div", middleware(Div))
 
 	server := &http.Server{
 		Handler:      router,
