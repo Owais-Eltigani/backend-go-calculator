@@ -94,6 +94,7 @@ func Multi(w http.ResponseWriter, r *http.Request) {
 	if operands.isEmpty("GET/multi") {
 		fmt.Println(operands.Operand1, operands.Operand2)
 		w.Write([]byte("one of the operands are empty."))
+		fmt.Println("inside is empty.", operands.Operand1, operands.Operand2)
 		// return
 	}
 

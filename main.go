@@ -34,7 +34,7 @@ func checkIpAddressLimit(ip string) *rate.Limiter {
 	if !exist {
 
 		// v = rate.NewLimiter(0, 0)  //? for testing.
-		v = rate.NewLimiter(rate.Limit(3), 2) //? 3 requests for user and 2 burst.
+		v = rate.NewLimiter(rate.Limit(3), 2) //? 3 requests for user and 2
 	}
 	return v
 }
@@ -63,7 +63,10 @@ func main() {
 	router := http.NewServeMux()
 	port := ":5000"
 
-	router.HandleFunc("GET /add", middleware(Add))
+	router.Handle("GET /add", authenticate(Add))
+
+	//
+	// router.HandleFunc("GET /add", middleware(Add))
 	router.HandleFunc("GET /sub", middleware(Sub))
 	router.HandleFunc("GET /multi", middleware(Multi))
 	router.HandleFunc("GET /div", middleware(Div))
@@ -78,4 +81,20 @@ func main() {
 	fmt.Println("router...")
 	log.Fatal(server.ListenAndServe())
 
+}
+
+func authenticate(next http.HandlerFunc) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		username, password, ok := r.BasicAuth()
+
+		if !ok {
+			fmt.Println("not possiable")
+			http.Error(w, "not authenticated", http.StatusUnauthorized)
+			return
+		}
+		fmt.Println(username, password, ok)
+		next.ServeHTTP(w, r)
+	}
 }
