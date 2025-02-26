@@ -25,36 +25,6 @@ var (
 var limiter = rate.NewLimiter(2, 3)
 var visitors = make(map[string]*rate.Limiter, 0)
 
-func checkIpAddressLimit(ip string) *rate.Limiter {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	v, exist := visitors[ip]
-
-	if !exist {
-
-		// v = rate.NewLimiter(0, 0)  //? for testing.
-		v = rate.NewLimiter(rate.Limit(3), 2) //? 3 requests for user and 2
-	}
-	return v
-}
-
-func middleware(next http.HandlerFunc) http.HandlerFunc {
-
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		ip := r.RemoteAddr
-		limit := checkIpAddressLimit(ip)
-		fmt.Println("ip: ", ip, "limit: ", limit.Allow())
-
-		if !limit.Allow() {
-			http.Error(w, "too many requests", http.StatusTooManyRequests)
-			return
-		}
-		next.ServeHTTP(w, r)
-	}
-}
-
 func main() {
 	// only on test.
 	fmt.Println("backend calculator using golan.")
@@ -63,13 +33,17 @@ func main() {
 	router := http.NewServeMux()
 	port := ":5000"
 
-	router.Handle("GET /add", authenticate(Add))
+	router.HandleFunc("POST /login", Login) //! login first using owais:123 to access multi & div
+	router.Handle("GET /add", BasicAuth(Add))
+	router.Handle("GET /sub", BearTokenMiddleware(Sub))
+	router.Handle("GET /multi", JWTverifiaction(Multi))
+	router.HandleFunc("GET /div", JWTverifiaction(Div))
 
-	//
+	// these endpoints use rate limiter
 	// router.HandleFunc("GET /add", middleware(Add))
-	router.HandleFunc("GET /sub", middleware(Sub))
-	router.HandleFunc("GET /multi", middleware(Multi))
-	router.HandleFunc("GET /div", middleware(Div))
+	// router.HandleFunc("GET /sub", middleware(Sub))
+	// router.HandleFunc("GET /multi", middleware(Multi))
+	// router.HandleFunc("GET /div", Middleware(Div))
 
 	server := &http.Server{
 		Handler:      router,
@@ -81,20 +55,4 @@ func main() {
 	fmt.Println("router...")
 	log.Fatal(server.ListenAndServe())
 
-}
-
-func authenticate(next http.HandlerFunc) http.HandlerFunc {
-
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		username, password, ok := r.BasicAuth()
-
-		if !ok {
-			fmt.Println("not possiable")
-			http.Error(w, "not authenticated", http.StatusUnauthorized)
-			return
-		}
-		fmt.Println(username, password, ok)
-		next.ServeHTTP(w, r)
-	}
 }
